@@ -9,6 +9,7 @@ Features:
 TODO:
 - Extend API
 - Optimize code
+- Add Media Session API support
 - tbd
 
 ## Intro
