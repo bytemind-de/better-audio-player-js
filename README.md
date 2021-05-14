@@ -1,18 +1,22 @@
 # A Better Audio Player for HTML5 - BetterAudio.js
 
-## 1. introduce
-html5 audio player(with playlist) using flexbox, svg, css animations and  js api.
+Features:
+- Use CSS styles to change audio element (player)
+- Manage playlists
+- Javascript API
 
-forked from @k-ivan at http://codepen.io/k-ivan/pen/pJMLmJ
+## Intro
 
-demo: [html5-audio-player](https://likev.github.io/html5-audio-player/ 'html5-audio-player demo')
+Original Codepen: http://codepen.io/k-ivan/pen/pJMLmJ by @k-ivan  
+Original fork: https://github.com/likev/html5-audio-player by @likev  
 
 ![html5-audio-player-screenshot](html5-audio-player.png)
 
-## 2. how to use
+## Quick Start
+
 1. insert Google Material Icons and BetterAudio.css before `</head>`
 2. insert BetterAudio.js before `</body>`
-3. use AP.init function
+3. use BetterAudio.init function
 
 code example:
 ```html
@@ -64,4 +68,4 @@ code example:
 </html>
 ```
 
-it will work!
+Have fun! :-)
