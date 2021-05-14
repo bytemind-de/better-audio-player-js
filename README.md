@@ -1,4 +1,4 @@
-# html5-audio-player
+# A Better Audio Player for HTML5 - BetterAudio.js
 
 ## 1. introduce
 html5 audio player(with playlist) using flexbox, svg, css animations and  js api.
@@ -10,8 +10,8 @@ demo: [html5-audio-player](https://likev.github.io/html5-audio-player/ 'html5-au
 ![html5-audio-player-screenshot](html5-audio-player.png)
 
 ## 2. how to use
-1. insert Google Material Icons and AudioPlayer.css before `</head>`
-2. insert AudioPlayer.js before `</body>`
+1. insert Google Material Icons and BetterAudio.css before `</head>`
+2. insert BetterAudio.js before `</body>`
 3. use AP.init function
 
 code example:
@@ -24,7 +24,7 @@ code example:
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="css/AudioPlayer.css">
+    <link rel="stylesheet" href="css/BetterAudio.css">
     <style>
 
     #player{
@@ -41,20 +41,20 @@ code example:
      <div id='player'></div>
 
     <!-- Audio player js begin-->
-    <script src="js/AudioPlayer.js"></script>
+    <script src="js/BetterAudio.js"></script>
 
     <script>
         // test image for web notifications
         var iconImage = null;
 
-        AP.init({
+        BetterAudio.init({
             container:'#player',//a string containing one CSS selector
             volume   : 0.7,
             autoPlay : true,
             notification: false,
             playList: [
-                {'icon': iconImage, 'title': 'Try Everything', 'file': 'mp3/try-everything.mp3'},
-                {'icon': iconImage, 'title': 'Let It Go', 'file': 'mp3/let-it-go.mp3'}
+                {icon: iconImage, title: "Jump Steady Blues", file: "http://www.openmusicarchive.org/audio/Jump_Steady_Blues.mp3"},
+                {icon: iconImage, title: "Eddies Twister", file: "http://www.openmusicarchive.org/audio/Eddies_Twister.mp3"}
           ]
         });
     </script>
