@@ -1,8 +1,8 @@
-(function (window, undefined) {
+(function (window, undefined){
 
 	'use strict';
 
-	var BetterAudio = (function () {
+	var BetterAudio = (function(){
 
 		var aphtml =
 			'  <div class="ap-inner">' +
@@ -60,570 +60,592 @@
 			'    </div>' +
 			'  </div>';
 
+		//Create new player
+		//NOTE: this is not the optimal way to create a new object but the fastest to make this player scoped
+		function newPlayer(playerOptions){
 
-		// Player vars
-		var
-			player,
-			imageDiv,
-			playBtn,
-			prevBtn,
-			nextBtn,
-			plBtn,
-			repeatBtn,
-			shuffleBtn,
-			volumeBtn,
-			progressBar,
-			preloadBar,
-			curTime,
-			durTime,
-			trackTitle,
-			audio,
-			index = 0,
-			playList,
-			volumeBar,
-			volumeLength,
-			repeating = false,
-			// either null or an array of all indices which were not played yet
-			shuffling = null,
-			played = [],
-			seeking = false,
-			rightClick = false,
-			apActive = false,
-			// playlist vars
-			pl,
-			plLi,
-			// settings
-			settings = {
-				container: 'body',
-				volume: 0.5,
-				autoPlay: false,
-				notification: false,
-				playList: []
-			};
+			// Player vars
+			var
+				player,
+				imageDiv,
+				playBtn,
+				prevBtn,
+				nextBtn,
+				plBtn,
+				repeatBtn,
+				shuffleBtn,
+				volumeBtn,
+				progressBar,
+				preloadBar,
+				curTime,
+				durTime,
+				trackTitle,
+				audio,
+				index = 0,
+				playList,
+				volumeBar,
+				volumeLength,
+				repeating = false,
+				// either null or an array of all indices which were not played yet
+				shuffling = null,
+				played = [],
+				seeking = false,
+				rightClick = false,
+				apActive = false,
+				// playlist vars
+				pl,
+				plLi,
+				// settings
+				settings = {
+					container: '',
+					volume: 0.75,
+					autoPlay: false,
+					notification: false,
+					playList: []
+				};
 
-		function init(options) {
+			function init() {
 
-			if (!('classList' in document.documentElement)) {
-				return false;
-			}
-
-			player = create('div', {
-				className: 'ap',
-				innerHTML: aphtml
-			});
-
-			if (apActive || player === null) {
-				return;
-			}
-
-			settings = extend(settings, options);
-
-			var targetContainer = document.querySelector(settings.container);
-			targetContainer.classList.add("better-audio");
-			targetContainer.insertBefore(player, null);
-			
-			//resize observer for target
-			var targetResizeObserver;
-			if ('ResizeObserver' in window){
-				targetResizeObserver = new ResizeObserver(function(entries){
-					var nuSize = targetContainer.getBoundingClientRect();
-					targetContainer.classList.remove("ba-large", "ba-medium", "ba-small", "ba-tiny");
-					if (nuSize.width <= 200){
-						targetContainer.classList.add("ba-tiny");
-					}else if (nuSize.width <= 320){
-						targetContainer.classList.add("ba-small");
-					}else if (nuSize.width <= 630){
-						targetContainer.classList.add("ba-medium");
-					}else if (nuSize.width <= 880){
-						targetContainer.classList.add("ba-large");
-					}
+				player = create('div', {
+					className: 'ap',
+					innerHTML: aphtml
 				});
-				targetResizeObserver.observe(targetContainer);
-				//TODO: disconnect somewhere?
-			}
 
-			// get player elements
-			playBtn = player.querySelector('.ap-toggle-btn');
-			prevBtn = player.querySelector('.ap-prev-btn');
-			nextBtn = player.querySelector('.ap-next-btn');
-			repeatBtn = player.querySelector('.ap-repeat-btn');
-			shuffleBtn = player.querySelector('.ap-shuffle-btn');
-			volumeBtn = player.querySelector('.ap-volume-btn');
-			plBtn = player.querySelector('.ap-playlist-btn');
-			curTime = player.querySelector('.ap-time--current');
-			durTime = player.querySelector('.ap-time--duration');
-			trackTitle = player.querySelector('.ap-title');
-			progressBar = player.querySelector('.ap-bar');
-			preloadBar = player.querySelector('.ap-preload-bar');
-			volumeBar = player.querySelector('.ap-volume-bar');
-
-			playList = settings.playList;
-
-			playBtn.addEventListener('click', playToggle, false);
-			volumeBtn.addEventListener('click', volumeToggle, false);
-			repeatBtn.addEventListener('click', repeatToggle, false);
-			shuffleBtn.addEventListener('click', shuffleToggle, false);
-
-			progressBar.parentNode.parentNode.addEventListener('mousedown', handlerBar, false);
-			progressBar.parentNode.parentNode.addEventListener('mousemove', seek, false);
-			document.documentElement.addEventListener('mouseup', seekingFalse, false);
-
-			volumeBar.parentNode.parentNode.addEventListener('mousedown', handlerVol, false);
-			volumeBar.parentNode.parentNode.addEventListener('mousemove', setVolume);
-			document.documentElement.addEventListener('mouseup', seekingFalse, false);
-
-			prevBtn.addEventListener('click', prev, false);
-			nextBtn.addEventListener('click', next, false);
-
-			imageDiv = create('div', {
-				className: 'ap-image'
-			})
-			player.parentNode.insertBefore(imageDiv, player);
-
-			apActive = true;
-
-			// Create playlist
-			renderPL();
-			plBtn.addEventListener('click', plToggle, false);
-
-			// Create audio object
-			audio = new Audio();
-			audio.volume = settings.volume;
-
-			if (isEmptyList()) {
-				empty();
-				return;
-			}
-
-			audio.src = playList[index].file;
-			audio.preload = 'auto';
-			trackTitle.innerHTML = playList[index].title;
-			volumeBar.style.height = audio.volume * 100 + '%';
-			volumeLength = volumeBar.css('height');
-
-			audio.addEventListener('error', error, false);
-			audio.addEventListener('timeupdate', update, false);
-			audio.addEventListener('ended', doEnd, false);
-			audio.addEventListener('play', () => {
-				playBtn.classList.add('playing');
-			}, false)
-			audio.addEventListener('pause', () => {
-				playBtn.classList.remove('playing');
-			}, false)
-
-			if (settings.autoPlay) {
-				audio.play();
-				plLi[index].classList.add('pl-current');
-			}
-		}
-
-		/**
-		 *  PlayList methods
-		 */
-		function renderPL() {
-			var html = [];
-			var tpl =
-				'<li data-track="{count}">' +
-					'<div class="pl-number">' +
-						'<div class="pl-count">' +
-							'<i class="material-icons">audiotrack</i>' +
-						'</div>' +
-						'<div class="pl-playing">' +
-							'<div class="eq">' +
-								'<div class="eq-bar"></div>' +
-								'<div class="eq-bar"></div>' +
-								'<div class="eq-bar"></div>' +
-							'</div>' +
-						'</div>' +
-					'</div>' +
-					'<div class="pl-title">{title}</div>' +
-					'<button class="pl-remove">' +
-						'<i class="material-icons">delete</i>' +
-					'</button>' +
-				'</li>';
-
-			playList.forEach(function (item, i) {
-				html.push(
-					tpl.replace('{count}', i).replace('{title}', item.title)
-				);
-			});
-
-			pl = create('div', {
-				className: 'pl-container hide',
-				innerHTML: !isEmptyList() ? '<ul class="pl-list">' + html.join('') + '</ul>' : '<div class="pl-empty">PlayList is empty</div>'
-			});
-
-			player.parentNode.insertBefore(pl, player);
-
-			plLi = pl.querySelectorAll('li');
-
-			pl.addEventListener('click', listHandler, false);
-		}
-
-		function listHandler(evt) {
-			evt.preventDefault();
-			if (evt.target.className === 'pl-title') {
-				var current = parseInt(evt.target.parentNode.getAttribute('data-track'), 10);
-				index = current;
-				play();
-				plActive();
-			}
-			else {
-				var target = evt.target;
-				while (target.className !== pl.className) {
-					if (target.className === 'pl-remove') {
-						var isDel = parseInt(target.parentNode.getAttribute('data-track'), 10);
-
-						playList.splice(isDel, 1);
-						target.parentNode.parentNode.removeChild(target.parentNode);
-
-						plLi = pl.querySelectorAll('li');
-
-						[].forEach.call(plLi, function (el, i) {
-							el.setAttribute('data-track', i);
-						});
-
-						if (!audio.paused) {
-
-							if (isDel === index) {
-								play();
-							}
-
-						}
-						else {
-							if (isEmptyList()) {
-								empty();
-							}
-							else {
-								// audio.currentTime = 0;
-								audio.src = playList[index].file;
-								document.title = trackTitle.innerHTML = playList[index].title;
-								progressBar.style.width = 0;
-							}
-						}
-						if (isDel < index) {
-							index--;
-						}
-
-						return;
-					}
-					target = target.parentNode;
-				}
-
-			}
-		}
-
-		function plActive() {
-			if (audio.paused) {
-				plLi[index].classList.remove('pl-current');
-				return;
-			}
-			var current = index;
-			for (var i = 0, len = plLi.length; len > i; i++) {
-				plLi[i].classList.remove('pl-current');
-			}
-			plLi[current].classList.add('pl-current');
-
-			imageDiv.innerHTML = ''
-			if (playList[current].icon) {
-				let image = create('img', {
-					src: playList[current].icon
-				})
-				imageDiv.appendChild(image)
-			}
-		}
-
-
-		/**
-		 *  Player methods
-		 */
-		function error() {
-			!isEmptyList() && next();
-		}
-		function play() {
-
-			index = (index > playList.length - 1) ? 0 : index;
-			if (index < 0) index = playList.length - 1;
-
-			if (isEmptyList()) {
-				empty();
-				return;
-			}
-
-			played.push(index)
-
-			audio.src = playList[index].file;
-			audio.preload = 'auto';
-			document.title = trackTitle.innerHTML = playList[index].title;
-			audio.play();
-			notify(playList[index].title, {
-				icon: playList[index].icon,
-				body: 'Now playing',
-				tag: 'music-player'
-			});
-			plActive();
-		}
-
-		function prev() {
-			if (played.length > 1) {
-				index = played.splice(-2)[0];
-			} else {
-				index = 0;
-			}
-
-			play();
-		}
-
-		function next(interactive) {
-			if (shuffling) {
-				if (shuffling.length === 0) {
-					if (repeating || interactive) {
-						shuffling = [...Array(playList.length).keys()]
-					} else {
-						audio.pause();
-						plActive();
-
-						return;
-					}
-				}
-
-				let i = Math.floor(Math.random() * shuffling.length);
-				index = shuffling.splice(i, 1)[0];
-			} else {
-				if (index === playList.length - 1 && (!repeating && !interactive)) {
-					audio.pause();
-					plActive();
-					playBtn.classList.remove('playing');
+				if (apActive || player === null) {
 					return;
 				}
 
-				index = (index === playList.length - 1) ? 0 : index + 1;
+				settings = extend(settings, playerOptions);
+				if (!settings.container){
+					throw {
+						name: "BetterAudioException",
+						message: "Missing container element selector!"
+					}
+				}
+
+				var targetContainer = document.querySelector(settings.container);
+				targetContainer.classList.add("better-audio");
+				targetContainer.insertBefore(player, null);
+				
+				//resize observer for target
+				var targetResizeObserver;
+				if ('ResizeObserver' in window){
+					targetResizeObserver = new ResizeObserver(function(entries){
+						var nuSize = targetContainer.getBoundingClientRect();
+						targetContainer.classList.remove("ba-large", "ba-medium", "ba-small", "ba-tiny");
+						if (nuSize.width <= 200){
+							targetContainer.classList.add("ba-tiny");
+						}else if (nuSize.width <= 320){
+							targetContainer.classList.add("ba-small");
+						}else if (nuSize.width <= 630){
+							targetContainer.classList.add("ba-medium");
+						}else if (nuSize.width <= 880){
+							targetContainer.classList.add("ba-large");
+						}
+					});
+					targetResizeObserver.observe(targetContainer);
+					//TODO: disconnect somewhere?
+				}
+
+				// get player elements
+				playBtn = player.querySelector('.ap-toggle-btn');
+				prevBtn = player.querySelector('.ap-prev-btn');
+				nextBtn = player.querySelector('.ap-next-btn');
+				repeatBtn = player.querySelector('.ap-repeat-btn');
+				shuffleBtn = player.querySelector('.ap-shuffle-btn');
+				volumeBtn = player.querySelector('.ap-volume-btn');
+				plBtn = player.querySelector('.ap-playlist-btn');
+				curTime = player.querySelector('.ap-time--current');
+				durTime = player.querySelector('.ap-time--duration');
+				trackTitle = player.querySelector('.ap-title');
+				progressBar = player.querySelector('.ap-bar');
+				preloadBar = player.querySelector('.ap-preload-bar');
+				volumeBar = player.querySelector('.ap-volume-bar');
+
+				playList = settings.playList;
+
+				playBtn.addEventListener('click', playToggle, false);
+				volumeBtn.addEventListener('click', volumeToggle, false);
+				repeatBtn.addEventListener('click', repeatToggle, false);
+				shuffleBtn.addEventListener('click', shuffleToggle, false);
+
+				progressBar.parentNode.parentNode.addEventListener('mousedown', handlerBar, false);
+				progressBar.parentNode.parentNode.addEventListener('mousemove', seek, false);
+				document.documentElement.addEventListener('mouseup', seekingFalse, false);
+
+				volumeBar.parentNode.parentNode.addEventListener('mousedown', handlerVol, false);
+				volumeBar.parentNode.parentNode.addEventListener('mousemove', setVolume);
+				document.documentElement.addEventListener('mouseup', seekingFalse, false);
+
+				prevBtn.addEventListener('click', prev, false);
+				nextBtn.addEventListener('click', next, false);
+
+				imageDiv = create('div', {
+					className: 'ap-image'
+				})
+				player.parentNode.insertBefore(imageDiv, player);
+
+				apActive = true;
+
+				// Create playlist
+				renderPL();
+				plBtn.addEventListener('click', plToggle, false);
+
+				// Create audio object
+				audio = new Audio();
+				audio.volume = settings.volume;
+
+				if (isEmptyList()) {
+					empty();
+					return;
+				}
+
+				audio.src = playList[index].file;
+				audio.preload = 'auto';
+				trackTitle.innerHTML = playList[index].title;
+				volumeBar.style.height = audio.volume * 100 + '%';
+				volumeLength = getOrSetCss(volumeBar, 'height');
+
+				audio.addEventListener('error', error, false);
+				audio.addEventListener('timeupdate', update, false);
+				audio.addEventListener('ended', doEnd, false);
+				audio.addEventListener('play', () => {
+					playBtn.classList.add('playing');
+				}, false)
+				audio.addEventListener('pause', () => {
+					playBtn.classList.remove('playing');
+				}, false)
+
+				if (settings.autoPlay) {
+					var playPromise = audio.play();
+					plLi[index].classList.add('pl-current');
+					if (playPromise !== undefined){
+						playPromise.then(function(){
+							return;
+						}).catch(function(error){
+							//Autoplay was prevented.
+							plLi[index].classList.remove('pl-current');
+							console.error("BetterAudio - Autoplay was prevented by browser because user didn't interact with page first.");
+						});
+					}
+				}
 			}
 
-			play();
-		}
+			/**
+			 *  PlayList methods
+			 */
+			function renderPL() {
+				var html = [];
+				var tpl =
+					'<li data-track="{count}">' +
+						'<div class="pl-number">' +
+							'<div class="pl-count">' +
+								'<i class="material-icons">audiotrack</i>' +
+							'</div>' +
+							'<div class="pl-playing">' +
+								'<div class="eq">' +
+									'<div class="eq-bar"></div>' +
+									'<div class="eq-bar"></div>' +
+									'<div class="eq-bar"></div>' +
+								'</div>' +
+							'</div>' +
+						'</div>' +
+						'<div class="pl-title">{title}</div>' +
+						'<button class="pl-remove">' +
+							'<i class="material-icons">delete</i>' +
+						'</button>' +
+					'</li>';
 
-		function isEmptyList() {
-			return playList.length === 0;
-		}
+				playList.forEach(function (item, i) {
+					html.push(
+						tpl.replace('{count}', i).replace('{title}', item.title)
+					);
+				});
 
-		function empty() {
-			audio.pause();
-			audio.src = '';
-			trackTitle.innerHTML = 'queue is empty';
-			curTime.innerHTML = '--';
-			durTime.innerHTML = '--';
-			progressBar.style.width = 0;
-			preloadBar.style.width = 0;
-			pl.innerHTML = '<div class="pl-empty">PlayList is empty</div>';
-		}
+				pl = create('div', {
+					className: 'pl-container hide',
+					innerHTML: !isEmptyList() ? '<ul class="pl-list">' + html.join('') + '</ul>' : '<div class="pl-empty">PlayList is empty</div>'
+				});
 
-		function playToggle() {
-			if (isEmptyList()) {
-				return;
+				player.parentNode.insertBefore(pl, player);
+
+				plLi = pl.querySelectorAll('li');
+
+				pl.addEventListener('click', listHandler, false);
 			}
-			if (audio.paused) {
+
+			function listHandler(evt) {
+				evt.preventDefault();
+				if (evt.target.className === 'pl-title') {
+					var current = parseInt(evt.target.parentNode.getAttribute('data-track'), 10);
+					index = current;
+					play();
+					plActive();
+				
+				} else {
+					var target = evt.target;
+					while (target.className !== pl.className) {
+						if (target.className === 'pl-remove') {
+							var isDel = parseInt(target.parentNode.getAttribute('data-track'), 10);
+
+							playList.splice(isDel, 1);
+							target.parentNode.parentNode.removeChild(target.parentNode);
+
+							plLi = pl.querySelectorAll('li');
+
+							[].forEach.call(plLi, function (el, i) {
+								el.setAttribute('data-track', i);
+							});
+
+							if (!audio.paused) {
+
+								if (isDel === index) {
+									play();
+								}
+
+							}
+							else {
+								if (isEmptyList()) {
+									empty();
+								}
+								else {
+									// audio.currentTime = 0;
+									audio.src = playList[index].file;
+									document.title = trackTitle.innerHTML = playList[index].title;
+									progressBar.style.width = 0;
+								}
+							}
+							if (isDel < index) {
+								index--;
+							}
+
+							return;
+						}
+						target = target.parentNode;
+					}
+
+				}
+			}
+
+			function plActive() {
+				if (audio.paused) {
+					plLi[index].classList.remove('pl-current');
+					return;
+				}
+				var current = index;
+				for (var i = 0, len = plLi.length; len > i; i++) {
+					plLi[i].classList.remove('pl-current');
+				}
+				plLi[current].classList.add('pl-current');
+
+				imageDiv.innerHTML = ''
+				if (playList[current].icon) {
+					let image = create('img', {
+						src: playList[current].icon
+					})
+					imageDiv.appendChild(image)
+				}
+			}
+
+
+			/**
+			 *  Player methods
+			 */
+			function error(ev) {
+				console.error("ERROR", ev);		//DEBUG
+				!isEmptyList() && next();
+			}
+			function play() {
+
+				index = (index > playList.length - 1) ? 0 : index;
+				if (index < 0) index = playList.length - 1;
+
+				if (isEmptyList()) {
+					empty();
+					return;
+				}
+
+				played.push(index);
+
+				audio.src = playList[index].file;
+				audio.preload = 'auto';
+				document.title = trackTitle.innerHTML = playList[index].title;
 				audio.play();
 				notify(playList[index].title, {
 					icon: playList[index].icon,
-					body: 'Now playing'
+					body: 'Now playing',
+					tag: 'music-player'
 				});
-				this.classList.add('playing');
+				plActive();
 			}
-			else {
-				audio.pause();
-				this.classList.remove('playing');
-			}
-			plActive();
-		}
 
-		function volumeToggle() {
-			if (audio.muted) {
-				if (parseInt(volumeLength, 10) === 0) {
-					volumeBar.style.height = '100%';
-					audio.volume = 1;
+			function prev() {
+				if (played.length > 1) {
+					index = played.splice(-2)[0];
+				} else {
+					index = 0;
 				}
-				else {
-					volumeBar.style.height = volumeLength;
-				}
-				audio.muted = false;
-				this.classList.remove('muted');
+				play();
 			}
-			else {
-				audio.muted = true;
-				volumeBar.style.height = 0;
-				this.classList.add('muted');
-			}
-		}
 
-		function repeatToggle() {
-			var repeat = this.classList;
-			if (repeat.contains('ap-active')) {
-				repeating = false;
-				repeat.remove('ap-active');
-			}
-			else {
-				repeating = true;
-				repeat.add('ap-active');
-			}
-		}
+			function next(interactive) {
+				if (shuffling) {
+					if (shuffling.length === 0) {
+						if (repeating || interactive) {
+							shuffling = [...Array(playList.length).keys()]
+						} else {
+							audio.pause();
+							plActive();
 
-		function shuffleToggle() {
-			var shuffle = this.classList;
-			if (shuffle.contains('ap-active')) {
-				shuffling = null;
-				shuffle.remove('ap-active');
-			}
-			else {
-				shuffling = [...Array(playList.length).keys()]
-				shuffle.add('ap-active');
-			}
-		}
-
-		function plToggle() {
-			this.classList.toggle('ap-active');
-			pl.classList.toggle('hide');
-		}
-
-		function update() {
-			if (audio.readyState === 0) return;
-
-			var barlength = Math.round(audio.currentTime * (100 / audio.duration));
-			progressBar.style.width = barlength + '%';
-
-			var
-				curMins = Math.floor(audio.currentTime / 60),
-				curSecs = Math.floor(audio.currentTime - curMins * 60),
-				mins = Math.floor(audio.duration / 60),
-				secs = Math.floor(audio.duration - mins * 60);
-			(curSecs < 10) && (curSecs = '0' + curSecs);
-			(secs < 10) && (secs = '0' + secs);
-
-			curTime.innerHTML = curMins + ':' + curSecs;
-			durTime.innerHTML = mins + ':' + secs;
-
-			var buffered = audio.buffered;
-			if (buffered.length) {
-				var loaded = Math.round(100 * buffered.end(0) / audio.duration);
-				preloadBar.style.width = loaded + '%';
-			}
-		}
-
-		function doEnd() {
-			next(false);
-		}
-
-		function moveBar(evt, el, dir) {
-			var value;
-			if (dir === 'horizontal') {
-				value = Math.round(((evt.clientX - el.offset().left) + window.pageXOffset) * 100 / el.parentNode.offsetWidth);
-				el.style.width = value + '%';
-				return value;
-			}
-			else {
-				var offset = (el.offset().top + el.offsetHeight) - window.pageYOffset;
-				value = Math.round((offset - evt.clientY));
-				if (value > 100) value = 100;
-				if (value < 0) value = 0;
-				volumeBar.style.height = value + '%';
-				return value;
-			}
-		}
-
-		function handlerBar(evt) {
-			rightClick = (evt.which === 3) ? true : false;
-			seeking = true;
-			seek(evt);
-		}
-
-		function handlerVol(evt) {
-			rightClick = (evt.which === 3) ? true : false;
-			seeking = true;
-			setVolume(evt);
-		}
-
-		function seek(evt) {
-			if (seeking && rightClick === false && audio.readyState !== 0) {
-				var value = moveBar(evt, progressBar, 'horizontal');
-				audio.currentTime = audio.duration * (value / 100);
-			}
-		}
-
-		function seekingFalse() {
-			seeking = false;
-		}
-
-		function setVolume(evt) {
-			volumeLength = volumeBar.css('height');
-			if (seeking && rightClick === false) {
-				var value = moveBar(evt, volumeBar.parentNode, 'vertical') / 100;
-				if (value <= 0) {
-					audio.volume = 0;
-					volumeBtn.classList.add('muted');
-				}
-				else {
-					if (audio.muted) audio.muted = false;
-					audio.volume = value;
-					volumeBtn.classList.remove('muted');
-				}
-			}
-		}
-
-		function notify(title, attr) {
-			if (!settings.notification) {
-				return;
-			}
-			if (window.Notification === undefined) {
-				return;
-			}
-			window.Notification.requestPermission(function (access) {
-				if (access === 'granted') {
-					var notice = new Notification(title.substr(0, 110), attr);
-					notice.onshow = function () {
-						setTimeout(function () {
-							notice.close();
-						}, 5000);
+							return;
+						}
 					}
-					// notice.onclose = function() {
-					//   if(noticeTimer) {
-					//     clearTimeout(noticeTimer);
-					//   }
-					// }
+
+					let i = Math.floor(Math.random() * shuffling.length);
+					index = shuffling.splice(i, 1)[0];
+				} else {
+					if (index === playList.length - 1 && (!repeating && !interactive)) {
+						audio.pause();
+						plActive();
+						playBtn.classList.remove('playing');
+						return;
+					}
+
+					index = (index === playList.length - 1) ? 0 : index + 1;
 				}
-			})
-		}
+				play();
+			}
 
-		/* Destroy method. Clear All */
-		function destroy() {
-			if (!apActive) return;
+			function isEmptyList() {
+				return playList.length === 0;
+			}
 
-			playBtn.removeEventListener('click', playToggle, false);
-			volumeBtn.removeEventListener('click', volumeToggle, false);
-			repeatBtn.removeEventListener('click', repeatToggle, false);
-			plBtn.removeEventListener('click', plToggle, false);
+			function empty() {
+				audio.pause();
+				audio.src = '';
+				trackTitle.innerHTML = 'queue is empty';
+				curTime.innerHTML = '--';
+				durTime.innerHTML = '--';
+				progressBar.style.width = 0;
+				preloadBar.style.width = 0;
+				pl.innerHTML = '<div class="pl-empty">PlayList is empty</div>';
+			}
 
-			progressBar.parentNode.parentNode.removeEventListener('mousedown', handlerBar, false);
-			progressBar.parentNode.parentNode.removeEventListener('mousemove', seek, false);
-			document.documentElement.removeEventListener('mouseup', seekingFalse, false);
+			function playToggle() {
+				if (isEmptyList()) {
+					return;
+				}
+				if (audio.paused) {
+					audio.play();
+					notify(playList[index].title, {
+						icon: playList[index].icon,
+						body: 'Now playing'
+					});
+					this.classList.add('playing');
+				
+				} else {
+					audio.pause();
+					this.classList.remove('playing');
+				}
+				plActive();
+			}
 
-			volumeBar.parentNode.parentNode.removeEventListener('mousedown', handlerVol, false);
-			volumeBar.parentNode.parentNode.removeEventListener('mousemove', setVolume);
-			document.documentElement.removeEventListener('mouseup', seekingFalse, false);
+			function volumeToggle() {
+				if (audio.muted) {
+					if (parseInt(volumeLength, 10) === 0) {
+						volumeBar.style.height = '100%';
+						audio.volume = 1;
+					}
+					else {
+						volumeBar.style.height = volumeLength;
+					}
+					audio.muted = false;
+					this.classList.remove('muted');
+				
+				} else {
+					audio.muted = true;
+					volumeBar.style.height = 0;
+					this.classList.add('muted');
+				}
+			}
 
-			prevBtn.removeEventListener('click', prev, false);
-			nextBtn.removeEventListener('click', next, false);
+			function repeatToggle() {
+				var repeat = this.classList;
+				if (repeat.contains('ap-active')) {
+					repeating = false;
+					repeat.remove('ap-active');
+				}
+				else {
+					repeating = true;
+					repeat.add('ap-active');
+				}
+			}
 
-			audio.removeEventListener('error', error, false);
-			audio.removeEventListener('timeupdate', update, false);
-			audio.removeEventListener('ended', doEnd, false);
-			player.parentNode.removeChild(player);
+			function shuffleToggle() {
+				var shuffle = this.classList;
+				if (shuffle.contains('ap-active')) {
+					shuffling = null;
+					shuffle.remove('ap-active');
+				}
+				else {
+					shuffling = [...Array(playList.length).keys()]
+					shuffle.add('ap-active');
+				}
+			}
 
-			// Playlist
-			pl.removeEventListener('click', listHandler, false);
-			pl.parentNode.removeChild(pl);
+			function plToggle() {
+				this.classList.toggle('ap-active');
+				pl.classList.toggle('hide');
+			}
 
-			audio.pause();
-			apActive = false;
+			function update() {
+				if (audio.readyState === 0) return;
+
+				var barlength = Math.round(audio.currentTime * (100 / audio.duration));
+				progressBar.style.width = barlength + '%';
+
+				var
+					curMins = Math.floor(audio.currentTime / 60),
+					curSecs = Math.floor(audio.currentTime - curMins * 60),
+					mins = Math.floor(audio.duration / 60),
+					secs = Math.floor(audio.duration - mins * 60);
+				(curSecs < 10) && (curSecs = '0' + curSecs);
+				(secs < 10) && (secs = '0' + secs);
+
+				curTime.innerHTML = curMins + ':' + curSecs;
+				durTime.innerHTML = mins + ':' + secs;
+
+				var buffered = audio.buffered;
+				if (buffered.length) {
+					var loaded = Math.round(100 * buffered.end(0) / audio.duration);
+					preloadBar.style.width = loaded + '%';
+				}
+			}
+
+			function doEnd() {
+				next(false);
+			}
+
+			function moveBar(evt, el, dir) {
+				var value;
+				if (dir === 'horizontal') {
+					value = Math.round(((evt.clientX - getOffset(el).left) + window.pageXOffset) * 100 / el.parentNode.offsetWidth);
+					el.style.width = value + '%';
+					return value;
+				}
+				else {
+					var offset = (getOffset(el).top + el.offsetHeight) - window.pageYOffset;
+					value = Math.round((offset - evt.clientY));
+					if (value > 100) value = 100;
+					if (value < 0) value = 0;
+					volumeBar.style.height = value + '%';
+					return value;
+				}
+			}
+
+			function handlerBar(evt) {
+				rightClick = (evt.which === 3) ? true : false;
+				seeking = true;
+				seek(evt);
+			}
+
+			function handlerVol(evt) {
+				rightClick = (evt.which === 3) ? true : false;
+				seeking = true;
+				setVolume(evt);
+			}
+
+			function seek(evt) {
+				if (seeking && rightClick === false && audio.readyState !== 0) {
+					var value = moveBar(evt, progressBar, 'horizontal');
+					audio.currentTime = audio.duration * (value / 100);
+				}
+			}
+
+			function seekingFalse() {
+				seeking = false;
+			}
+
+			function setVolume(evt) {
+				volumeLength = getOrSetCss(volumeBar, 'height');
+				if (seeking && rightClick === false) {
+					var value = moveBar(evt, volumeBar.parentNode, 'vertical') / 100;
+					if (value <= 0) {
+						audio.volume = 0;
+						volumeBtn.classList.add('muted');
+					}
+					else {
+						if (audio.muted) audio.muted = false;
+						audio.volume = value;
+						volumeBtn.classList.remove('muted');
+					}
+				}
+			}
+
+			function notify(title, attr) {
+				if (!settings.notification) {
+					return;
+				}
+				if (window.Notification === undefined) {
+					return;
+				}
+				window.Notification.requestPermission(function (access) {
+					if (access === 'granted') {
+						var notice = new Notification(title.substr(0, 110), attr);
+						notice.onshow = function () {
+							setTimeout(function () {
+								notice.close();
+							}, 5000);
+						}
+						// notice.onclose = function() {
+						//   if(noticeTimer) {
+						//     clearTimeout(noticeTimer);
+						//   }
+						// }
+					}
+				})
+			}
+
+			/* Destroy method. Clear All */
+			function destroy() {
+				if (!apActive) return;
+
+				playBtn.removeEventListener('click', playToggle, false);
+				volumeBtn.removeEventListener('click', volumeToggle, false);
+				repeatBtn.removeEventListener('click', repeatToggle, false);
+				plBtn.removeEventListener('click', plToggle, false);
+
+				progressBar.parentNode.parentNode.removeEventListener('mousedown', handlerBar, false);
+				progressBar.parentNode.parentNode.removeEventListener('mousemove', seek, false);
+				document.documentElement.removeEventListener('mouseup', seekingFalse, false);
+
+				volumeBar.parentNode.parentNode.removeEventListener('mousedown', handlerVol, false);
+				volumeBar.parentNode.parentNode.removeEventListener('mousemove', setVolume);
+				document.documentElement.removeEventListener('mouseup', seekingFalse, false);
+
+				prevBtn.removeEventListener('click', prev, false);
+				nextBtn.removeEventListener('click', next, false);
+
+				audio.removeEventListener('error', error, false);
+				audio.removeEventListener('timeupdate', update, false);
+				audio.removeEventListener('ended', doEnd, false);
+				player.parentNode.removeChild(player);
+
+				// Playlist
+				pl.removeEventListener('click', listHandler, false);
+				pl.parentNode.removeChild(pl);
+
+				audio.pause();
+				apActive = false;
+			}
+			
+			//initialize
+			init();
+			
+			//newPlayer interface
+			return {
+				destroy: destroy
+			};		
 		}
 
 
@@ -649,37 +671,32 @@
 			}
 			return element;
 		}
-
-		Element.prototype.offset = function () {
-			var el = this.getBoundingClientRect(),
+		function getOffset(that){
+			var el = that.getBoundingClientRect(),
 				scrollLeft = window.pageXOffset || document.documentElement.scrollLeft,
 				scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-
 			return {
 				top: el.top + scrollTop,
 				left: el.left + scrollLeft
 			};
-		};
-
-		Element.prototype.css = function (attr) {
-			if (typeof attr === 'string') {
-				return getComputedStyle(this, '')[attr];
-			}
-			else if (typeof attr === 'object') {
+		}
+		function getOrSetCss(that, attr){
+			if (typeof attr === 'string'){
+				return getComputedStyle(that, '')[attr];
+			}else if (typeof attr === 'object'){
 				for (var name in attr) {
-					if (this.style[name] !== undefined) {
-						this.style[name] = attr[name];
+					if (that.style[name] !== undefined){
+						that.style[name] = attr[name];
 					}
 				}
 			}
-		};
+		}
 
 		/**
 		 *  Public methods
 		 */
 		return {
-			init: init,
-			destroy: destroy
+			newPlayer: newPlayer
 		};
 
 	})();

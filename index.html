@@ -15,22 +15,33 @@
 	<style>
 		#player {
 			position: relative;
-			/*max-width: 700px;*/
-			height: 500px;
+			/*width: 700px;*/
+			max-width: 100%;
+			/*height: 500px;*/
 			border: solid 1px gray;
+		}
+		#player2 {
+			position: relative;
+			border: solid 1px gray;
+			width: 256px;
+			/*height: 256px;*/
+			max-width: 100%;
 		}
     </style>
   </head>
   <body>
     <!-- Audio player container-->
     <div id='player'></div>
+	<br>
+	<div id='player2'></div>
 	<p>Music found on: <a href="http://www.openmusicarchive.org" target=_blank>http://www.openmusicarchive.org</a></p>
 	
 	<script>
-        // test image for web notifications
-        var iconImage = null;
+        //test image for player and notifications
+		var iconImage = null;
+        var iconImage2 = "http://www.openmusicarchive.org/images/OMA_logo.png";
 
-        BetterAudio.init({
+        var p1 = BetterAudio.newPlayer({
             container: '#player', //a string containing one CSS selector
             volume   : 0.7,
             autoPlay : true,
@@ -38,6 +49,17 @@
             playList: [
                 {icon: iconImage, title: "Jump Steady Blues", file: "http://www.openmusicarchive.org/audio/Jump_Steady_Blues.mp3"},
                 {icon: iconImage, title: "Eddies Twister", file: "http://www.openmusicarchive.org/audio/Eddies_Twister.mp3"}
+			]
+        });
+		
+		var p2 = BetterAudio.newPlayer({
+            container: '#player2', //a string containing one CSS selector
+            volume   : 0.66,
+            autoPlay : false,
+            notification: true,
+            playList: [
+                {icon: iconImage2, title: "Jump Steady Blues", file: "http://www.openmusicarchive.org/audio/Jump_Steady_Blues.mp3"},
+                {icon: null, title: "Broken Link", file: "broken.link.local"}
 			]
         });
     </script>
