@@ -17,6 +17,8 @@ TODO:
 Original Codepen: http://codepen.io/k-ivan/pen/pJMLmJ by @k-ivan  
 Original fork: https://github.com/likev/html5-audio-player by @likev  
 
+Demo: https://byteteilchen.de/better-audio-js/
+
 Major changes to original fork (May 2021):
 - Renamed to 'BetterAudio.js'
 - Refactured code to enable multiple player instances on same HTML page
