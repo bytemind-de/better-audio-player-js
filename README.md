@@ -7,6 +7,7 @@ Features:
 - Javascript API (under construction)
 
 TODO:
+- Fix volume control button
 - Extend API
 - Optimize code
 - Add Media Session API support
