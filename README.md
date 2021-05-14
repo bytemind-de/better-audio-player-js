@@ -1,7 +1,8 @@
 # A Better Audio Player for HTML5 - BetterAudio.js
 
 Features:
-- Use CSS styles to change audio element (player)
+- Unified, predictable look for HTML audio elements across browsers
+- Use CSS to style your audio element
 - Manage playlists
 - Javascript API
 

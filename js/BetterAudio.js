@@ -109,7 +109,6 @@
 
 			player = create('div', {
 				className: 'ap',
-				id: 'ap',
 				innerHTML: aphtml
 			});
 
@@ -122,6 +121,26 @@
 			var targetContainer = document.querySelector(settings.container);
 			targetContainer.classList.add("better-audio");
 			targetContainer.insertBefore(player, null);
+			
+			//resize observer for target
+			var targetResizeObserver;
+			if ('ResizeObserver' in window){
+				targetResizeObserver = new ResizeObserver(function(entries){
+					var nuSize = targetContainer.getBoundingClientRect();
+					targetContainer.classList.remove("ba-large", "ba-medium", "ba-small", "ba-tiny");
+					if (nuSize.width <= 200){
+						targetContainer.classList.add("ba-tiny");
+					}else if (nuSize.width <= 320){
+						targetContainer.classList.add("ba-small");
+					}else if (nuSize.width <= 630){
+						targetContainer.classList.add("ba-medium");
+					}else if (nuSize.width <= 880){
+						targetContainer.classList.add("ba-large");
+					}
+				});
+				targetResizeObserver.observe(targetContainer);
+				//TODO: disconnect somewhere?
+			}
 
 			// get player elements
 			playBtn = player.querySelector('.ap-toggle-btn');
@@ -231,7 +250,6 @@
 
 			pl = create('div', {
 				className: 'pl-container hide',
-				id: 'pl',
 				innerHTML: !isEmptyList() ? '<ul class="pl-list">' + html.join('') + '</ul>' : '<div class="pl-empty">PlayList is empty</div>'
 			});
 
