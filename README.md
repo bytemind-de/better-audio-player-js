@@ -4,20 +4,33 @@ Features:
 - Unified, predictable look for HTML audio elements across browsers
 - Use CSS to style your audio element
 - Manage playlists
-- Javascript API
+- Javascript API (under construction)
+
+TODO:
+- Extend API
+- Optimize code
+- tbd
 
 ## Intro
 
 Original Codepen: http://codepen.io/k-ivan/pen/pJMLmJ by @k-ivan  
 Original fork: https://github.com/likev/html5-audio-player by @likev  
 
-![html5-audio-player-screenshot](html5-audio-player.png)
+Major changes to original fork (May 2021):
+- Renamed to 'BetterAudio.js'
+- Refactured code to enable multiple player instances on same HTML page
+- Scoped CSS within `.better-audio` class
+- Added resize observer to player element to set CSS classes 'ba-large', 'ba-medium', 'ba-small', 'ba-tiny'
+- Style optimizations
+
+![player_large](screenshots/player_large.png)
+![player_small_with_image](screenshots/player_small_with_image.png)
 
 ## Quick Start
 
 1. insert Google Material Icons and BetterAudio.css before `</head>`
 2. insert BetterAudio.js before `</body>`
-3. use BetterAudio.init function
+3. use BetterAudio.newPlayer function
 
 code example:
 ```html
@@ -25,37 +38,39 @@ code example:
 <html >
   <head>
     <meta charset="UTF-8">
-    <title>Audio player HTML5</title>
+    <title>Better Audio Player HTML5</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+	<!-- required -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="css/BetterAudio.css">
-    <style>
-
-    #player{
-        position: relative;
-        max-width: 700px;
-        height: 500px;
-        border: solid 1px gray;
-    }
+    
+	<!-- import BetterAudio -->
+	<link rel="stylesheet" href="css/BetterAudio.css">
+	<script src="js/BetterAudio.js"></script>
+    
+	<style>
+		#player{
+			position: relative;
+			max-width: 700px;
+			height: 500px;
+			border: solid 1px gray;
+		}
     </style>
   </head>
 
   <body>
-      <!-- Audio player container-->
-     <div id='player'></div>
-
-    <!-- Audio player js begin-->
-    <script src="js/BetterAudio.js"></script>
+    <!-- BetterAudio container-->
+    <div id='player'></div>
 
     <script>
-        // test image for web notifications
+        // test image for player and web notifications
         var iconImage = null;
 
-        BetterAudio.init({
-            container:'#player',//a string containing one CSS selector
-            volume   : 0.7,
-            autoPlay : true,
+		// create player
+        BetterAudio.newPlayer({
+            container: '#player', //a string containing one CSS selector
+            volume: 0.7,
+            autoPlay: true,
             notification: false,
             playList: [
                 {icon: iconImage, title: "Jump Steady Blues", file: "http://www.openmusicarchive.org/audio/Jump_Steady_Blues.mp3"},
@@ -63,7 +78,6 @@ code example:
           ]
         });
     </script>
-    <!-- Audio player js end-->
 
   </body>
 </html>
